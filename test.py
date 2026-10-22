@@ -1,15 +1,14 @@
-from DBcm import UseDatabase
+from argon2 import PasswordHasher
 
-dbconfig = {'host' : 'localhost',
-            'user' : 'root',
-			'password' : '',
-			'database' : 'Tabela'}
-print(dbconfig)
-with UseDatabase(dbconfig) as cursor:
-    sql = '''select sala from users
-    where id = %s'''
-    print(sql)
-    cursor.execute(sql, ('2',))
-    result = cursor.fetchone()
-    print(result)
-print(result)
+# Create a PasswordHasher instance
+ph = PasswordHasher()
+
+# Hash a password
+password = "aluno"
+hash = ph.hash(password)
+
+print(hash)
+# Verify the password
+is_valid = ph.verify(hash, "aluno")
+
+print(is_valid) # True if the password matches the hash

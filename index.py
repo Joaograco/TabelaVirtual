@@ -1,17 +1,26 @@
 from flask import Flask, render_template, request, session, redirect, make_response, url_for
-from schoollib import SchoolData
+from libs.schoollib import SchoolData
+from libs.encrpytion import Encryption
 from html import escape
 from DBcm import UseDatabase
 import hashlib
-from check import loggedin, loggedout
+from libs.check import loggedin, loggedout
+from dotenv import load_dotenv
+import os
+from argon2 import PasswordHasher
+lazy import argon2
+
 
 app = Flask(__name__, static_folder='static')
+load_dotenv()
+hasher = PasswordHasher()
+Encrypt = Encryption()
 
 if __name__ == '__main__':
-    app.config['dbconfig'] = {'host' : 'localhost', 'user' : 'webDB', 'password' : 'DBpasswd', 'database' : 'Tabela'}
+    app.config['dbconfig'] = {'host' : 'localhost', 'user' : 'webDB', 'password' : 'DBpasswd', 'database' : 'Tabela', 'auth_plugin' : 'mysql_native_password'}
 
 else:
-    app.config['dbconfig'] = {'host' : 'joaograco.mysql.pythonanywhere-services.com', 'user' : 'joaograco', 'password' : '3248213379a', 'database' : 'joaograco$website'}
+    app.config['dbconfig'] = {'host' : os.environ['DB_HOST'], 'user' : os.environ['USER_DB'], 'password' : os.environ['PASSWORD_DB'], 'database' : os.environ['NAME_DB'], 'auth_plugin' : 'mysql_native_password'}
 
 mylib = SchoolData(app.config['dbconfig'])
 
@@ -29,17 +38,8 @@ def home():
     return render_template('home.html', page_title=titulo), 200
 
 @app.route('/aula')
-@loggedin
 def aula():
-    titulo = 'Aula'
-    aula_agora = mylib.aula(session['sala'])
-    aula = aula_agora[0]
-    prof = aula_agora[1]
-    if aula != 'Nada':
-        texto = escape(f'Agora está tendo aula de {aula}, com o professor(a) {prof}.')
-    else:
-        texto = escape('Agora não está tendo aula')
-    return render_template('horario.html', text=texto, page_title=titulo)
+    return redirect('https://espacoestudante.seduc.se.gov.br/')
 
 @app.route('/almoco')
 @loggedin
@@ -55,7 +55,7 @@ def almoco():
 def login():
     titulo = 'Login'
     if 'login_error' in session:
-        return redirect('/login/err')
+        return redirect('/login/contiune/err')
     return render_template('login.html', page_title=titulo)
 
 @app.route('/login/continue', methods=['POST'])
@@ -63,14 +63,20 @@ def login():
 def login_continue():
     titulo = 'Login'
     temp_email = request.form['email']
+    session['temp_mail'] = temp_email
     with UseDatabase(app.config['dbconfig']) as cursor:
         sql = '''select nome from users where email=%s'''
         cursor.execute(sql, (temp_email,))
         resultado = cursor.fetchone()
-        session['temp_email'] = temp_email
         if resultado != None:
+            session['temp_name'] = resultado[0]
             return render_template('login_part2.html', page_title=titulo, nome=resultado[0])
         return redirect('/login/continue/criar')
+    
+@app.route('/login/continue/err')
+def login_err():
+    titulo = 'Login'
+    return render_template('login_err.html', page_title=titulo, nome=session['temp_name'])
     
 @app.route('/login/enviando/<tipo>', methods=['POST'])
 @loggedout
@@ -78,44 +84,64 @@ def login_enviando(tipo):
     match tipo:
         case 'login':
             senha = request.form['password']
-            senha_hash = hashlib.sha256(senha.encode()).hexdigest()
             email = session['temp_email']
             with UseDatabase(app.config['dbconfig']) as cursor:
-                sql = '''select nome, sala, tipo from users where email=%s and senha=%s'''
-                cursor.execute(sql, (email, senha_hash))
+                sql = '''select nome, sala, tipo, senha from users where email=%s'''
+                cursor.execute(sql, (email,))
                 resultado = cursor.fetchone()
                 if resultado != None:
-                    response = make_response(redirect('/'))
-                    nome_cookie = response.set_cookie('nome', resultado[0])
-                    session['nome'] = resultado[0]
-                    sala_cookie = response.set_cookie('sala', resultado[1])
-                    session['sala'] = resultado[1]
-                    tipo_cookie = response.set_cookie('tipo', resultado[2])
-                    session['tipo'] = resultado[2]
-                    session['login'] = True
-                    return response
+                    if Encrypt.verify_from_db(senha, resultado[3]):
+                        response = make_response(redirect('/'))
+                        nome_cookie = response.set_cookie('nome', resultado[0])
+                        session['nome'] = resultado[0]
+                        sala_cookie = response.set_cookie('sala', resultado[1])
+                        session['sala'] = resultado[1]
+                        tipo_cookie = response.set_cookie('tipo', resultado[2])
+                        session['tipo'] = resultado[2]
+                        session['login'] = True
+                        return response
                 else:
                     return redirect('/login/contiune/err')
         case 'login_err':
             senha = request.form['password']
-            senha_hash = hashlib.sha256(senha.encode()).hexdigest()
             email = request.form['email']
             with UseDatabase(app.config['dbconfig']) as cursor:
-                sql = '''select nome, sala, tipo from users where email=%s and senha=%s'''
-                cursor.execute(sql, (email, senha_hash))
+                sql = '''select nome, sala, tipo, senha from users where email=%s'''
+                cursor.execute(sql, (email,))
                 resultado = cursor.fetchone()
-                if resultado != None:
-                    response = make_response(redirect('/'))
-                    nome_cookie = response.set_cookie('nome', resultado[0])
-                    session['nome'] = resultado[0]
-                    sala_cookie = response.set_cookie('sala', resultado[1])
-                    session['sala'] = resultado[1]
-                    tipo_cookie = response.set_cookie('tipo', resultado[2])
-                    session['tipo'] = resultado[2]
-                    session['login'] = True
-                    return response
+                if Encrypt.verify_from_db(senha, resultado[3]):
+                    if resultado != None:
+                        response = make_response(redirect('/'))
+                        nome_cookie = response.set_cookie('nome', resultado[0])
+                        session['nome'] = resultado[0]
+                        sala_cookie = response.set_cookie('sala', resultado[1])
+                        session['sala'] = resultado[1]
+                        tipo_cookie = response.set_cookie('tipo', resultado[2])
+                        session['tipo'] = resultado[2]
+                        session['login'] = True
+                        return response
+                else:
+                    return redirect('/login/contiune/err')
         case 'criar':
-            pass
+            senha = request.form['password']
+            senha_hash = Encrypt.hash(str_to_hash=senha)
+            email = request.form['email']
+            with UseDatabase(app.config['dbconfig']) as cursor:
+                sql = '''insert into users
+                (user, nome, senha, email, sala, tipo)
+                values
+                (%s, %s, %s, %s, %s, %s);'''
+                cursor.execute(sql, (request.form['user'], request.form['nome'], senha_hash, email, request.form['sala'], 'aluno'))
+                resultado = cursor.fetchone()
+                response = make_response(redirect('/'))
+                nome_cookie = response.set_cookie('nome', request.form['nome'])
+                session['nome'] = request.form['nome']
+                sala_cookie = response.set_cookie('sala', request.form['sala'])
+                session['sala'] = request.form['sala']
+                tipo_cookie = response.set_cookie('tipo', 'aluno')
+                session['tipo'] = 'aluno'
+                session['login'] = True
+                return response
 
 @app.route('/logout')
 @loggedin
@@ -139,6 +165,9 @@ def error(err):
     titulo = escape('Erro 404')
     return render_template('error.html', error_code=err, title=titulo, the_title=titulo)
 
+@app.errorhandler(argon2.exceptions.VerifyMismatchError)
+def keyerror(err):
+    return redirect('/login/contiune/err')
 
 app.secret_key = 'HatsuneMiku123'
 if __name__ == '__main__':

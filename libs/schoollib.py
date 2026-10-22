@@ -7,27 +7,6 @@ class SchoolData():
 	def __init__(self, dbconfig):
 		self.dbconfig = dbconfig
 
-	def salas(codigo):
-		match codigo:
-			case 'tbmb1b':
-				return '1a'
-			case 'tbmb1c':
-				return '1b'
-			case 'tbmb1d':
-				return '1c'
-			case 'ucnc2c':
-				return '2a'
-			case 'ucnc2d':
-				return '2b'
-			case 'ucnc2e':
-				return '2c'
-			case 'vdod3d':
-				return '3a'
-			case 'vdod3e':
-				return '3b'
-			case 'vdod3f':
-				return '3c'
-
 	def get_time(self):
 		timezone = pytz.timezone('America/Sao_Paulo')
 		self.agora = datetime.now(timezone)
@@ -38,64 +17,75 @@ class SchoolData():
 
 	def horario(self):
 		""" 11 = lanche manha
-	    	12 = aumoço
-   		13 = lanche tarde """
+			12 = aumoço
+			13 = lanche tarde """
 		agora = '0'
 		self.get_time()
 		match self.hora:
 			case 7:
-				if self.minuto in list(range(50, 59, 1)):
+				if 50 <= self.minuto < 59:
 					agora = '2'
-				elif self.minuto in list(range(0, 49, 1)):
+				elif 0 <= self.minuto < 49:
 					agora = '1'
+
 			case 8:
-				if self.minuto in list(range(0, 40, 1)):
+				if 0 <= self.minuto < 40:
 					agora = '2'
-				elif self.minuto in list(range(39, 59, 1)):
+				elif 39 <= self.minuto < 59:
 					agora = '3'
+
 			case 9:
-				if self.minuto in list(range(0, 29, 1)):
+				if 0 <= self.minuto < 29:
 					agora = '3'
-				elif self.minuto in list(range(30, 49, 1)):
+				elif 30 <= self.minuto < 49:
 					agora = '11'
-				elif self.minuto in list(range(50, 59, 1)):
+				elif 50 <= self.minuto < 59:
 					agora = '4'
+
 			case 10:
-				if self.minuto in list(range(0, 39, 1)):
+				if 0 <= self.minuto < 39:
 					agora = '4'
-				elif self.minuto in list(range(40, 59, 1)):
+				elif 40 <= self.minuto < 59:
 					agora = '5'
+
 			case 11:
-				if self.minuto in list(range(0, 29, 1)):
+				if 0 <= self.minuto < 29:
 					agora = '5'
-				if self.minuto in list(range(30, 59, 1)):
+				elif 30 <= self.minuto < 59:
 					agora = '12'
+
 			case 12:
-				if self.minuto in list(range(0, 59, 1)):
+				if 0 <= self.minuto < 59:
 					agora = '12'
+
 			case 13:
-				if self.minuto in list(range(0, 49, 1)):
+				if 0 <= self.minuto < 49:
 					agora = '6'
-				if self.minuto in list(range(50, 59, 1)):
+				elif 50 <= self.minuto < 59:
 					agora = '7'
+
 			case 14:
-				if self.minuto in list(range(0, 39, 1)):
+				if 0 <= self.minuto < 39:
 					agora = '7'
-				if self.minuto in list(range(40, 49, 1)):
+				elif 40 <= self.minuto < 49:
 					agora = '13'
-				if self.minuto in list(range(50, 59, 1)):
+				elif 50 <= self.minuto < 59:
 					agora = '8'
+
 			case 15:
-				if self.minuto in list(range(0, 39, 1)):
+				if 0 <= self.minuto < 39:
 					agora = '8'
-				if self.minuto in list(range(40, 59, 1)):
+				elif 40 <= self.minuto < 59:
 					agora = '9'
+
 			case 16:
-				if self.minuto in list(range(0, 29, 1)):
+				if 0 <= self.minuto < 29:
 					agora = '9'
+
 			case _:
 				agora = '0'
 		return agora
+
 
 	def aula(self, sala):
 		""" aulas dict
